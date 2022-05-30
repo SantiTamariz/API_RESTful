@@ -9,13 +9,10 @@ import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.ManyToOne;
-import javax.persistence.OneToMany;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotEmpty;
 import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Size;
-
-import com.fasterxml.jackson.annotation.JsonIgnore;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -34,7 +31,7 @@ public class Producto implements Serializable{
     private Long id;
 
     @NotEmpty(message = "El nombre no puede estar vacio")
-    @Size(max = 50, message = "Nombre entre 3 y 50")
+    @Size(max = 50, min = 4, message = "Nombre entre 3 y 50")
     private String nombre;
 
     @Size(max = 250, message = "Descripcion hasta 250 caracteres")

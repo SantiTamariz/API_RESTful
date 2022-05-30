@@ -4,7 +4,6 @@ import java.util.List;
 
 import com.example.dao.PresentacionDao;
 import com.example.dao.ProductoDao;
-import com.example.entities.Presentacion;
 import com.example.entities.Producto;
 
 import org.springframework.beans.factory.annotation.Autowired;
