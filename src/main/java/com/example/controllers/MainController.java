@@ -4,10 +4,12 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import javax.validation.Valid;
 
 import com.example.entities.Producto;
+import com.example.hateoas.assemblers.ProductoModelAssembler;
 import com.example.services.ProductoService;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,6 +17,8 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.hateoas.CollectionModel;
+import org.springframework.hateoas.EntityModel;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
@@ -29,9 +33,23 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import lombok.NonNull;
+import lombok.RequiredArgsConstructor;
+
+import static org.springframework.hateoas.server.mvc.WebMvcLinkBuilder.*;
+
+@RequiredArgsConstructor //Lombok para crear constructor con lo que se necesite
 @RestController   // responsable de armar el JSON
 @RequestMapping("/productos") /// LA URL REFIERE A LOS RECURSOS, en este caso se asume que manda productos
 public class MainController {
+
+    //Variable assembler
+    @NonNull
+    private final ProductoModelAssembler assembler;
+
+    //Constructor que recibe un assembler para inyectar depencia por constructor
+    //Para poderlo usar en los metodos para poner los enlaces de los hipertextos
+    //Con Lombok @NonNull no hace falta crear constructores
 
     @Autowired
     private ProductoService productoService;
@@ -41,63 +59,44 @@ public class MainController {
 
     // get mapping no lleva /nombre
     // en REST se define el metodo segun el verbo HTTP, GET POST DELETE
-    @GetMapping                                        
-    public ResponseEntity<List<Producto>> getProductos  // parametros OPCIONALES paginacion y cantidad
-                            (@RequestParam(name = "page", required = false) Integer page,
-                            @RequestParam(name = "size", required = false) Integer size) {
-    // ResponsiveEntity permite devolver un obj con mas informacion, ej el Status
-    // para que sea rest tiene que devolver esa informacion
+    @GetMapping
+	public CollectionModel<EntityModel<Producto>> getProductos(@RequestParam(required = false) Integer page,
+			@RequestParam(required = false) Integer size) {
 
-        // Para que devuelva el listado de productos ordenado por nombre, tanto si es
-        // con paginacion
-        // como si no lo es
-        Sort sortByName = Sort.by("nombre");  // crear variable que tenga el criterio de
-                                                            // ORDENAMIENTO que quiero
-                                                            // se podria pasar tb por param
-        ResponseEntity<List<Producto>> responseEntity = null;
+		// Para que devuelva el listado de productos ordenado por nombre, tanto si es
+		// con paginacion
+		// como si no lo es
+		Sort sortByName = Sort.by("nombre");
 
-        List<Producto> productos = null;  // se podria hacer con VAR tb
+		List<Producto> productos = null;
 
-        if (page != null && size != null) { // CON paginacion
-            
+		if (page != null && size != null) {
+			// Con paginacion
+			Pageable pageable = PageRequest.of(page, size, sortByName);
+			productos = productoService.findAll(pageable).getContent();
+		} else {
+			// Sin paginacion y recuperamos la lista completa de los productos
+			productos = productoService.findAll(sortByName);
 
-            Pageable pageable = PageRequest.of(page, size, sortByName); 
-                                // recibe param pag, cantidad y crit de ordenacion
-            productos = productoService.findAll(pageable).getContent();
-                                                        // extraer productos 
-        } else {
-            // Sin paginacion y devolvemos la lista completa de los productos ordenados
-            productos = productoService.findAll(sortByName);
+		}
 
-        }
+		var productosWithHyperlinks = productos.stream()
+					.map(assembler::toModel)
+					.collect(Collectors.toList());
 
-        if (productos.size() > 0) {
-            // si devuelve la lista == status OK
-            responseEntity = new ResponseEntity<List<Producto>>(productos, HttpStatus.OK);
-        } else {
-            // si el listado esta vacio == otro status
-            responseEntity = new ResponseEntity<List<Producto>>(HttpStatus.NO_CONTENT); //204
-        }
+		return CollectionModel.of(productosWithHyperlinks,
+		            linkTo(methodOn(MainController.class).getProductos(page,size)).withSelfRel());
+	}
 
-        return responseEntity;
-    }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<Producto> findById(@PathVariable(name = "id") Long id){
+    @GetMapping(value = "/{id}")
+	public EntityModel<Producto> findById(@PathVariable(name = "id") long id) {
 
-        ResponseEntity<Producto> responseEntity = null;
+		Producto producto = productoService.findById(id);
 
-        Producto producto = productoService.findById(id);
+		return assembler.toModel(producto);
+	}
 
-        if(producto != null){
-            responseEntity = new ResponseEntity<Producto>(producto, HttpStatus.OK);
-        }
-        else {
-            responseEntity = new ResponseEntity<>(HttpStatus.NO_CONTENT);
-        }
-
-        return responseEntity;
-    }
 
     //Persistir un método en la BD mediante el método post y un ResponseEntity
     //Post porque es contenido a persisitir
