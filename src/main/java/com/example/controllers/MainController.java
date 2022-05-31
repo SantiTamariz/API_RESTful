@@ -66,7 +66,7 @@ public class MainController {
             productos = productoService.findAll(pageable).getContent();
                                                         // extraer productos 
         } else {
-            // Sin paginacion y devolvemos la lista completa de los productos
+            // Sin paginacion y devolvemos la lista completa de los productos ordenados
             productos = productoService.findAll(sortByName);
 
         }
@@ -244,5 +244,5 @@ public class MainController {
 }
 
 // POSTMAN
-//ejemplo
+//ejemplo con paginas y tamaño de la pagina
 // http://localhost:8080/productos?page=1&size=3
